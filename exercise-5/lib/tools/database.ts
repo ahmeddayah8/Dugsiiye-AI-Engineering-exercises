@@ -1,0 +1,13 @@
+import {z} from 'zod';
+import {db} from '../db';
+import {Movie,User,Review} from '../models';
+export const databaseInput=z.object({operation:z.enum(['movies_by_genre','users_over_age','movies_above_rating','count_movies_by_genre','movie_reviews','search_movies']),genre:z.string().max(60).optional(),age:z.number().int().min(0).max(120).optional(),rating:z.number().min(0).max(10).optional(),title:z.string().max(120).optional(),movieId:z.string().regex(/^[a-f\d]{24}$/i).optional(),page:z.number().int().min(1).max(100).default(1)});
+export async function databaseTool(raw:z.input<typeof databaseInput>){const q=databaseInput.parse(raw);await db();const limit=10,skip=(q.page-1)*limit;switch(q.operation){
+case 'movies_by_genre':{if(!q.genre)throw Error('genre is required');const filter={genre:{$regex:escapeRegex(q.genre),$options:'i'}};return {type:'table',columns:['title','year','genre','rating','director'],rows:await Movie.find(filter).select('title year genre rating director').sort({year:-1}).skip(skip).limit(limit).lean(),total:await Movie.countDocuments(filter),page:q.page};}
+case 'users_over_age':{if(q.age===undefined)throw Error('age is required');const filter={age:{$gt:q.age}};return {type:'table',columns:['name','age','favorite_genre'],rows:await User.find(filter).select('name age favorite_genre').skip(skip).limit(limit).lean(),total:await User.countDocuments(filter),page:q.page};}
+case 'movies_above_rating':{if(q.rating===undefined)throw Error('rating is required');const filter={rating:{$gt:q.rating}};return {type:'table',columns:['title','year','genre','rating'],rows:await Movie.find(filter).select('title year genre rating').sort({rating:-1}).skip(skip).limit(limit).lean(),total:await Movie.countDocuments(filter),page:q.page};}
+case 'count_movies_by_genre':return {type:'table',columns:['genre','count'],rows:await Movie.aggregate([{$group:{_id:'$genre',count:{$sum:1}}},{$sort:{count:-1}},{$project:{_id:0,genre:'$_id',count:1}}]),page:1};
+case 'movie_reviews':{if(!q.movieId)throw Error('movieId is required');const filter={movie_id:q.movieId};return {type:'table',columns:['rating','comment','date'],rows:await Review.find(filter).select('rating comment date').sort({date:-1}).skip(skip).limit(limit).lean(),total:await Review.countDocuments(filter),page:q.page};}
+case 'search_movies':{if(!q.title)throw Error('title is required');const filter={title:{$regex:escapeRegex(q.title),$options:'i'}};return {type:'table',columns:['title','year','genre','rating'],rows:await Movie.find(filter).select('title year genre rating').skip(skip).limit(limit).lean(),total:await Movie.countDocuments(filter),page:q.page};}
+}}
+export function escapeRegex(s:string){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}

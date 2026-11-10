@@ -1,0 +1,12 @@
+import mongoose,{Schema,model,models} from 'mongoose';
+const movieSchema=new Schema({title:{type:String,required:true,trim:true},year:{type:Number,required:true,min:1888,max:2200},genre:{type:String,required:true},rating:{type:Number,min:0,max:10,default:0},director:String,description:String,poster:String,actors:String,runtime:String,imdbID:String,omdbCachedAt:Date},{timestamps:true});
+movieSchema.index({title:'text',description:'text'});movieSchema.index({genre:1,year:-1});movieSchema.index({rating:-1});movieSchema.index({imdbID:1},{unique:true,sparse:true});
+const userSchema=new Schema({name:{type:String,required:true},email:{type:String,required:true,lowercase:true,unique:true},age:{type:Number,min:0,max:120},favorite_genre:String});userSchema.index({age:1});
+const reviewSchema=new Schema({movie_id:{type:Schema.Types.ObjectId,ref:'Movie',required:true},user_id:{type:Schema.Types.ObjectId,ref:'User',required:true},rating:{type:Number,required:true,min:0,max:10},comment:String,date:{type:Date,default:Date.now}});reviewSchema.index({movie_id:1,date:-1});
+const jokeSchema=new Schema({externalId:{type:String,unique:true,sparse:true},text:{type:String,required:true},category:{type:String,enum:['dad','programming','general'],default:'dad'},up:{type:Number,default:0,min:0},down:{type:Number,default:0,min:0},createdAt:{type:Date,default:Date.now}});jokeSchema.index({text:'text'});
+const conversationSchema=new Schema({sessionId:{type:String,required:true,index:true},messages:[{role:{type:String,enum:['user','assistant']},text:String,at:{type:Date,default:Date.now}}],preferences:{favoriteGenre:String},usage:[{tool:String,at:{type:Date,default:Date.now},success:Boolean}]},{timestamps:true});
+export const Movie=models.Movie||model('Movie',movieSchema);
+export const User=models.User||model('User',userSchema);
+export const Review=models.Review||model('Review',reviewSchema);
+export const Joke=models.Joke||model('Joke',jokeSchema);
+export const Conversation=models.Conversation||model('Conversation',conversationSchema);

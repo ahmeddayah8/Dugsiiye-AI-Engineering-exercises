@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';import {z} from 'zod';import {db} from '@/lib/db';import {Conversation} from '@/lib/models';
+export async function POST(req:Request){try{const {sessionId}=z.object({sessionId:z.string().uuid()}).parse(await req.json());await db();await Conversation.deleteOne({sessionId});return NextResponse.json({ok:true});}catch{return NextResponse.json({error:'Invalid reset request'},{status:400});}}
